@@ -14,7 +14,9 @@
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
-    "paths": {}
+    "paths": {
+      "@node-frp/core": ["@node-frp/core/src/index.ts"]
+    }
   },
   "exclude": ["node_modules", "tmp"]
 }

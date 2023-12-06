@@ -1,0 +1,36 @@
+{
+  "name": "@node-frp/core",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "@node-frp/core/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/@node-frp/core",
+        "main": "@node-frp/core/src/index.ts",
+        "tsConfig": "@node-frp/core/tsconfig.lib.json",
+        "assets": ["@node-frp/core/*.md"]
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": [
+          "@node-frp/core/**/*.ts",
+          "@node-frp/core/package.json"
+        ]
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "jestConfig": "@node-frp/core/jest.config.ts"
+      }
+    }
+  },
+  "tags": []
+}
