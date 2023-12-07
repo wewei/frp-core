@@ -1,11 +1,11 @@
-export type Callback = () => void;
-export type Handler<T> = (t: T) => void;
-export type Behavior<T> = (cb: Callback) => T;
+import { Handler, Observe, Peek, Eff } from "./Types";
+
+export type Behavior<A> = (cb: Eff) => A;
 
 export const cached = <T>(bhT: Behavior<T>): Behavior<T> => {
   type Context = {
-    cbs: Callback[]; // Callbacks
-    inv: Callback; // Invalidate
+    efs: Eff[]; // Callbacks
+    inv: Eff; // Invalidate
     val: T; // Value
   };
   let ctx: Context | null = null;
@@ -13,15 +13,15 @@ export const cached = <T>(bhT: Behavior<T>): Behavior<T> => {
     if (!ctx) {
       const inv = () => {
         if (ctx?.inv === inv) {
-          const { cbs } = ctx;
+          const { efs } = ctx;
           ctx = null;
-          for (const cb of cbs) cb();
+          for (const cb of efs) cb();
         }
       };
       const val = bhT(inv);
-      ctx = { cbs: [], inv, val };
+      ctx = { efs: [], inv, val };
     }
-    ctx.cbs.push(cb);
+    ctx.efs.push(cb);
     return ctx.val;
   };
 };
@@ -47,13 +47,16 @@ export const bind =
     cached((cb) => f(bhT(cb))(cb));
 
 export const observe =
-    <T>(bhT: Behavior<T>) =>
-    (hdl: Handler<T>): Callback => {
-        let cb: Callback | null = () => cb && hdl(bhT(cb));
-        hdl(bhT(cb));
+    <T>(bhT: Behavior<T>): Observe<T> =>
+    (hdl: Handler<T>): Eff => {
+        let cb: Eff | null = () => cb && hdl(bhT(cb))();
+        hdl(bhT(cb))();
         return () => { cb = null; };
     };
 
-export const peek = <T>(bhT: Behavior<T>): T => bhT(() => {});
+export const peek =
+  <T>(bhT: Behavior<T>): Peek<T> =>
+  () =>
+    bhT(() => {});
 
 // export const observeBehavior = <T>(bhT: )
