@@ -1,9 +1,9 @@
-import { cached, pure, map, observe, peek, Behavior } from './Behavior';
+import { behavior, pureBehavior, mapBehavior, observeBehavior, peekBehavior, Behavior } from './Behavior';
 
 const stringLength = (str: string) => str.length;
 const iterateAsync = <T>(values: T[], final: T): Behavior<T> => {
   let index = 0;
-  return cached(cb => {
+  return behavior(cb => {
     if (index >= values.length) {
       return final;
     }
@@ -15,27 +15,27 @@ const iterateAsync = <T>(values: T[], final: T): Behavior<T> => {
   });
 };
 
-describe('Behavior ~ pure', () => {
+describe('pureBehavior', () => {
   it('should return a behavior with the given value', () => {
-    const bhA = pure('Foo');
-    expect(peek(bhA)()).toEqual('Foo');
+    const bhA = pureBehavior('Foo');
+    expect(peekBehavior(bhA)()).toEqual('Foo');
   });
 });
 
-describe('Behavior ~ map', () => {
+describe('mapBehavior', () => {
   beforeAll(() => jest.useFakeTimers());
   afterAll(() => jest.useRealTimers());
   it('should lift a function to map the Behaviors', () => {
-    const bhA = pure('Foo');
-    const bhB = map(stringLength)(bhA);
-    expect(peek(bhB)()).toEqual(3);
+    const bhA = pureBehavior('Foo');
+    const bhB = mapBehavior(stringLength)(bhA);
+    expect(peekBehavior(bhB)()).toEqual(3);
   });
 
   it('should lift a function to map the Behaviors (async)', () => {
     const hdl = jest.fn(() => () => {});
     const bhC = iterateAsync(['Foo', 'Bar'], 'Hello');
-    const bhD = map(stringLength)(bhC);
-    observe(bhD)(hdl);
+    const bhD = mapBehavior(stringLength)(bhC);
+    observeBehavior(bhD)(hdl);
     expect(hdl).toHaveBeenCalledTimes(1);
     expect(hdl).toHaveBeenLastCalledWith(3);
 
@@ -51,11 +51,11 @@ describe('Behavior ~ map', () => {
     const strLen = jest.fn(stringLength);
 
     const bhC = iterateAsync(['Foo', 'Bar'], 'Hello');
-    const bhD = map(strLen)(bhC);
+    const bhD = mapBehavior(strLen)(bhC);
     expect(strLen).not.toHaveBeenCalled();
 
-    observe(bhD)(hdl1);
-    observe(bhD)(hdl2);
+    observeBehavior(bhD)(hdl1);
+    observeBehavior(bhD)(hdl2);
     expect(strLen).toHaveBeenCalledTimes(1);
     expect(hdl1).toHaveBeenCalledTimes(1);
     expect(hdl2).toHaveBeenCalledTimes(1);
