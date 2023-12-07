@@ -3,19 +3,19 @@ import { Fn, Observe, Peek, Eff } from "./Types";
 export type Behavior<A> = Fn<Eff, A>;
 
 export const behavior = <A>(beh: Behavior<A>): Behavior<A> => {
-  type Context = { effs: Eff[]; val: A; };
+  type Context = { effs: Eff[]; inv: Eff; val: A };
   let ctx: Context | null = null;
-  const inv = () => {
-    if (ctx) {
-      const { effs } = ctx;
-      ctx = null;
-      for (const eff of effs) eff();
-    }
-  };
   return (eff) => {
     if (!ctx) {
+      const inv = () => {
+        if (ctx?.inv === inv) {
+          const { effs } = ctx;
+          ctx = null;
+          for (const eff of effs) eff();
+        }
+      };
       const val = beh(inv);
-      ctx = { effs: [], val };
+      ctx = { effs: [], inv, val };
     }
     ctx.effs.push(eff);
     return ctx.val;
