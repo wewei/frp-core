@@ -1,6 +1,6 @@
-import { Fn, Handler, Observe, Peek, Eff } from "./Types";
+import { Fn, Observe, Peek, Eff } from "./Types";
 
-export type Behavior<A> = (cb: Eff) => A;
+export type Behavior<A> = Fn<Eff, A>;
 
 export const behavior = <A>(beh: Behavior<A>): Behavior<A> => {
   type Context = { effs: Eff[]; val: A; };
@@ -30,25 +30,28 @@ export const pureBehavior =
 export const mapBehavior =
   <A, B>(f: (t: A) => B) =>
   (beh: Behavior<A>): Behavior<B> =>
-    behavior((cb) => f(beh(cb)));
+    behavior((eff) => f(beh(eff)));
 
 export const applyBehavior =
   <A, B>(behF: Behavior<Fn<A, B>>) =>
   (behA: Behavior<A>): Behavior<B> =>
-    behavior((cb) => behF(cb)(behA(cb)));
+    behavior((eff) => behF(eff)(behA(eff)));
 
 export const bindBehavior =
   <A>(beh: Behavior<A>) =>
   <B>(f: Fn<A, Behavior<B>>): Behavior<B> =>
-    behavior((cb) => f(beh(cb))(cb));
+    behavior((eff) => f(beh(eff))(eff));
 
 export const observeBehavior =
-    <A>(beh: Behavior<A>): Observe<A> =>
-    (hdl: Handler<A>): Eff => {
-        let cb: Eff | null = () => cb && hdl(beh(cb))();
-        hdl(beh(cb))();
-        return () => { cb = null; };
+  <A>(beh: Behavior<A>): Observe<A> =>
+  (hdl) =>
+  () => {
+    let eff: Eff | null = () => eff && hdl(beh(eff))();
+    hdl(beh(eff))();
+    return () => {
+      eff = null;
     };
+  };
 
 export const peekBehavior =
   <A>(beh: Behavior<A>): Peek<A> =>

@@ -35,7 +35,7 @@ describe('mapBehavior', () => {
     const hdl = jest.fn(() => () => {});
     const bhC = iterateAsync(['Foo', 'Bar'], 'Hello');
     const bhD = mapBehavior(stringLength)(bhC);
-    observeBehavior(bhD)(hdl);
+    observeBehavior(bhD)(hdl)();
     expect(hdl).toHaveBeenCalledTimes(1);
     expect(hdl).toHaveBeenLastCalledWith(3);
 
@@ -54,8 +54,8 @@ describe('mapBehavior', () => {
     const bhD = mapBehavior(strLen)(bhC);
     expect(strLen).not.toHaveBeenCalled();
 
-    observeBehavior(bhD)(hdl1);
-    observeBehavior(bhD)(hdl2);
+    observeBehavior(bhD)(hdl1)();
+    observeBehavior(bhD)(hdl2)();
     expect(strLen).toHaveBeenCalledTimes(1);
     expect(hdl1).toHaveBeenCalledTimes(1);
     expect(hdl2).toHaveBeenCalledTimes(1);
