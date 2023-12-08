@@ -21,10 +21,10 @@ describe('behavior', () => {
     const beh = behavior(cb);
     expect(cb).not.toHaveBeenCalled();
 
-    expect(peekBehavior(cb)()).toEqual('Foo');
+    expect(peekBehavior(beh)()).toEqual('Foo');
     expect(cb).toHaveBeenCalledTimes(1);
 
-    peekBehavior(cb)();
+    peekBehavior(beh)();
     expect(cb).toHaveBeenCalledTimes(1);
   });
 });
