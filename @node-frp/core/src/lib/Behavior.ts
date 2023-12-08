@@ -1,8 +1,8 @@
 import { Fn, Observe, Peek, Eff } from "./Types";
 
-export type Behavior<A> = Fn<Eff, A>;
+export type Behavior<A> = Fn<Eff | null, A>;
 
-export const behavior = <A>(beh: Behavior<A>): Behavior<A> => {
+export const behavior = <A>(fn: Fn<Eff, A>): Behavior<A> => {
   type Context = { effs: Eff[]; inv: Eff; val: A };
   let ctx: Context | null = null;
   return (eff) => {
@@ -14,10 +14,10 @@ export const behavior = <A>(beh: Behavior<A>): Behavior<A> => {
           for (const eff of effs) eff();
         }
       };
-      const val = beh(inv);
+      const val = fn(inv);
       ctx = { effs: [], inv, val };
     }
-    ctx.effs.push(eff);
+    if (eff) ctx.effs.push(eff);
     return ctx.val;
   };
 };
@@ -54,9 +54,7 @@ export const observeBehavior =
   };
 
 export const peekBehavior =
-  <A>(beh: Behavior<A>): Peek<A> =>
-  () =>
-    beh(() => {});
+  <A>(beh: Behavior<A>): Peek<A> => () => beh(null);
 
 export const deflicker =
   <A>(eq: Fn<A, Fn<A, boolean>>) =>
