@@ -58,3 +58,16 @@ export const peekBehavior =
   () =>
     beh(() => {});
 
+export const deflicker =
+  <A>(eq: Fn<A, Fn<A, boolean>>) =>
+  (beh: Behavior<A>): Behavior<A> =>
+  (eff) => {
+    let inv: Eff | null = () => {
+      if (inv && !eq(val)(beh(inv))) {
+        inv = null;
+        eff();
+      }
+    };
+    const val = beh(inv);
+    return val;
+  }
