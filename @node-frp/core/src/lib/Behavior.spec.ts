@@ -7,6 +7,7 @@ import {
   Behavior,
   applyBehavior,
   bindBehavior,
+  deflicker,
 } from './Behavior';
 import { Effect, Eff } from './Types';
 
@@ -28,10 +29,10 @@ const iterateAsync =
       }
     };
     next();
-    return behavior((cb) => {
-      effs.push(cb);
+    return (eff) => {
+      if (eff) effs.push(eff);
       return values[index];
-    });
+    };
   };
 
 const mockEffect = () => jest.fn();
@@ -183,5 +184,101 @@ describe('Behavior', () => {
       expect(hdl).toHaveBeenCalledTimes(6);
       unob();
     });
+  });
+
+  describe('observeBehavior', () => {
+    it('should observe and unobserve the Behavior correctly', () => {
+      const beh = iterateAsync(2)(0, 1, 2, 3)();
+      const [hdl, eff] = mockHandler();
+
+      const unob = observeBehavior(beh)(hdl)();
+      expect(eff).toHaveBeenCalledTimes(1);
+      expect(hdl).toHaveBeenCalledTimes(1);
+      expect(hdl).toHaveBeenLastCalledWith(0);
+
+      jest.advanceTimersByTime(3);
+      expect(eff).toHaveBeenCalledTimes(2);
+      expect(hdl).toHaveBeenCalledTimes(2);
+      expect(hdl).toHaveBeenLastCalledWith(1);
+
+      jest.advanceTimersByTime(2);
+      expect(eff).toHaveBeenCalledTimes(3);
+      expect(hdl).toHaveBeenCalledTimes(3);
+      expect(hdl).toHaveBeenLastCalledWith(2);
+
+      unob();
+      jest.advanceTimersByTime(5);
+      expect(eff).toHaveBeenCalledTimes(3);
+      expect(hdl).toHaveBeenCalledTimes(3);
+      expect(hdl).toHaveBeenLastCalledWith(2);
+    });
+  });
+
+  describe('peekBehavior', () => {
+    it('should peek the current value of the Behavior', () => {
+      const beh = iterateAsync(2)(0, 1, 2, 3)();
+
+      expect(peekBehavior(beh)()).toEqual(0);
+      jest.advanceTimersByTime(2);
+      expect(peekBehavior(beh)()).toEqual(1);
+      jest.advanceTimersByTime(2);
+      expect(peekBehavior(beh)()).toEqual(2);
+      jest.advanceTimersByTime(2);
+      expect(peekBehavior(beh)()).toEqual(3);
+    });
+  });
+
+  describe('deflicker', () => {
+    it('should deflicker a Behavior by omitting the unnecessary invalidations', () => {
+      const behA = iterateAsync(2)(0, 0, 1, 1)();
+      const [hdlA, effA] = mockHandler();
+      const behB = deflicker(x => y => x === y)(behA);
+      const [hdlB, effB] = mockHandler();
+
+      const unobA = observeBehavior(behA)(hdlA)();
+      const unobB = observeBehavior(behB)(hdlB)();
+
+      expect(effA).toHaveBeenCalledTimes(1);
+      expect(hdlA).toHaveBeenCalledTimes(1);
+      expect(hdlA).toHaveBeenLastCalledWith(0);
+
+      expect(effB).toHaveBeenCalledTimes(1);
+      expect(hdlB).toHaveBeenCalledTimes(1);
+      expect(hdlB).toHaveBeenLastCalledWith(0);
+
+      jest.advanceTimersByTime(3);
+
+      expect(effA).toHaveBeenCalledTimes(2);
+      expect(hdlA).toHaveBeenCalledTimes(2);
+      expect(hdlA).toHaveBeenLastCalledWith(0);
+
+      expect(effB).toHaveBeenCalledTimes(1);
+      expect(hdlB).toHaveBeenCalledTimes(1);
+      expect(hdlB).toHaveBeenLastCalledWith(0);
+
+      jest.advanceTimersByTime(2);
+
+      expect(effA).toHaveBeenCalledTimes(3);
+      expect(hdlA).toHaveBeenCalledTimes(3);
+      expect(hdlA).toHaveBeenLastCalledWith(1);
+
+      expect(effB).toHaveBeenCalledTimes(2);
+      expect(hdlB).toHaveBeenCalledTimes(2);
+      expect(hdlB).toHaveBeenLastCalledWith(1);
+
+      jest.advanceTimersByTime(2);
+
+      expect(effA).toHaveBeenCalledTimes(4);
+      expect(hdlA).toHaveBeenCalledTimes(4);
+      expect(hdlA).toHaveBeenLastCalledWith(1);
+
+      expect(effB).toHaveBeenCalledTimes(2);
+      expect(hdlB).toHaveBeenCalledTimes(2);
+      expect(hdlB).toHaveBeenLastCalledWith(1);
+
+      unobA();
+      unobB();
+    });
+
   });
 });
