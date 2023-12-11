@@ -4,42 +4,17 @@ import {
   mapBehavior,
   observeBehavior,
   peekBehavior,
-  Behavior,
   applyBehavior,
   bindBehavior,
   deflicker,
 } from './Behavior';
-import { Effect, Eff } from './Types';
+import {
+  strlen,
+  mockEffect,
+  mockHandler,
+  withCycle,
+} from './TestHelper.util';
 
-const stringLength = (str: string) => str.length;
-const iterateAsync =
-  (interval: number) =>
-  <T>(head: T, ...tail: T[]): Effect<Behavior<T>> =>
-  () => {
-    let index = -1;
-    let effs: Eff[] = [];
-    const values = [head, ...tail];
-    const next = () => {
-      const effsT = effs;
-      index += 1;
-      effs = [];
-      for (const eff of effsT) eff();
-      if (index < values.length - 1) {
-        setTimeout(next, interval);
-      }
-    };
-    next();
-    return (eff) => {
-      if (eff) effs.push(eff);
-      return values[index];
-    };
-  };
-
-const mockEffect = () => jest.fn();
-const mockHandler = () => {
-  const eff = mockEffect();
-  return [jest.fn(() => eff), eff];
-};
 
 describe('Behavior', () => {
   beforeAll(() => jest.useFakeTimers());
@@ -88,14 +63,14 @@ describe('Behavior', () => {
   describe('mapBehavior', () => {
     it('should lift a function to map the Behaviors', () => {
       const behA = pureBehavior('Foo');
-      const behB = mapBehavior(stringLength)(behA);
+      const behB = mapBehavior(strlen)(behA);
       expect(peekBehavior(behB)()).toEqual(3);
     });
 
     it('should lift a function to map the Behaviors (async)', () => {
       const [hdl, eff] = mockHandler();
-      const behA = iterateAsync(1)('Foo', 'Bar', 'Hello')();
-      const behB = mapBehavior(stringLength)(behA);
+      const behA = withCycle(1).behaviorOf('Foo', 'Bar', 'Hello')();
+      const behB = mapBehavior(strlen)(behA);
 
       const unob = observeBehavior(behB)(hdl)();
 
@@ -115,15 +90,15 @@ describe('Behavior', () => {
     it('should avoid duplicated invocations of the mapping function', () => {
       const [hdl1, eff1] = mockHandler();
       const [hdl2, eff2] = mockHandler();
-      const strLen = jest.fn(stringLength);
+      const strlenT = jest.fn(strlen);
 
-      const behA = iterateAsync(1)('Foo', 'Bar', 'Hello')();
-      const behB = mapBehavior(strLen)(behA);
-      expect(strLen).not.toHaveBeenCalled();
+      const behA = withCycle(1).behaviorOf('Foo', 'Bar', 'Hello')();
+      const behB = mapBehavior(strlenT)(behA);
+      expect(strlenT).not.toHaveBeenCalled();
 
       const unob1 = observeBehavior(behB)(hdl1)();
       const unob2 = observeBehavior(behB)(hdl2)();
-      expect(strLen).toHaveBeenCalledTimes(1);
+      expect(strlenT).toHaveBeenCalledTimes(1);
       expect(eff1).toHaveBeenCalledTimes(1);
       expect(eff2).toHaveBeenCalledTimes(1);
       expect(hdl1).toHaveBeenCalledTimes(1);
@@ -131,7 +106,7 @@ describe('Behavior', () => {
 
       jest.advanceTimersByTime(5);
 
-      expect(strLen).toHaveBeenCalledTimes(3);
+      expect(strlenT).toHaveBeenCalledTimes(3);
       expect(eff1).toHaveBeenCalledTimes(3);
       expect(eff2).toHaveBeenCalledTimes(3);
       expect(hdl1).toHaveBeenCalledTimes(3);
@@ -144,12 +119,12 @@ describe('Behavior', () => {
 
   describe('applyBehavior', () => {
     it('should apply a changing function on a changing value', () => {
-      const behF = iterateAsync(1)(
+      const behF = withCycle(1).behaviorOf(
         (x: number) => x + 1,
         (x) => x * 2,
         (x) => x - 1
       )();
-      const behA = iterateAsync(1)(1, 2)();
+      const behA = withCycle(1).behaviorOf(1, 2)();
       const behB = applyBehavior(behF)(behA);
       const [hdl, eff] = mockHandler();
 
@@ -170,8 +145,8 @@ describe('Behavior', () => {
 
   describe('bindBehavior', () => {
     it('should chain the Behavior operators correctly', () => {
-      const behA = iterateAsync(2)(0, 1, 2)();
-      const behs = [0, 1, 2].map(x => iterateAsync(x * 2 + 1)(x * 2, x * 2 + 1)());
+      const behA = withCycle(2).behaviorOf(0, 1, 2)();
+      const behs = [0, 1, 2].map(x => withCycle(x * 2 + 1).behaviorOf(x * 2, x * 2 + 1)());
       const behB = bindBehavior(behA)((x) => behs[x]);
       const [hdl, eff] = mockHandler();
 
@@ -188,7 +163,7 @@ describe('Behavior', () => {
 
   describe('observeBehavior', () => {
     it('should observe and unobserve the Behavior correctly', () => {
-      const beh = iterateAsync(2)(0, 1, 2, 3)();
+      const beh = withCycle(2).behaviorOf(0, 1, 2, 3)();
       const [hdl, eff] = mockHandler();
 
       const unob = observeBehavior(beh)(hdl)();
@@ -216,7 +191,7 @@ describe('Behavior', () => {
 
   describe('peekBehavior', () => {
     it('should peek the current value of the Behavior', () => {
-      const beh = iterateAsync(2)(0, 1, 2, 3)();
+      const beh = withCycle(2).behaviorOf(0, 1, 2, 3)();
 
       expect(peekBehavior(beh)()).toEqual(0);
       jest.advanceTimersByTime(2);
@@ -230,7 +205,7 @@ describe('Behavior', () => {
 
   describe('deflicker', () => {
     it('should deflicker a Behavior by omitting the unnecessary invalidations', () => {
-      const behA = iterateAsync(2)(0, 0, 1, 1)();
+      const behA = withCycle(2).behaviorOf(0, 0, 1, 1)();
       const [hdlA, effA] = mockHandler();
       const behB = deflicker(x => y => x === y)(behA);
       const [hdlB, effB] = mockHandler();
